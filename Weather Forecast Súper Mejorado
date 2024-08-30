@@ -1,0 +1,199 @@
+using System;
+using System.Collections.Generic;
+
+namespace EstacionMeteorologica
+{
+    public abstract class Persona
+    {
+        public string Nombre { get; set; }
+        public string Turno { get; set; }
+
+        protected Persona(string nombre, string turno)
+        {
+            Nombre = nombre;
+            Turno = turno;
+        }
+    }
+
+    public class Pasante : Persona
+    {
+        public int NumeroLegajo { get; set; }
+
+        public Pasante(string nombre, string turno, int numeroLegajo) : base(nombre, turno)
+        {
+            NumeroLegajo = numeroLegajo;
+        }
+    }
+
+    public class Profesional : Persona
+    {
+        public string NumeroMatricula { get; set; }
+
+        public Profesional(string nombre, string turno, string numeroMatricula) : base(nombre, turno)
+        {
+            NumeroMatricula = numeroMatricula;
+        }
+    }
+
+    public class RegistroTemperatura
+    {
+        public double Temperatura { get; set; }
+        public Persona PersonaDeTurno { get; set; }
+        public DateTime FechaRegistro { get; set; }
+
+        public RegistroTemperatura(double temperatura, Persona personaDeTurno, DateTime fechaRegistro)
+        {
+            Temperatura = temperatura;
+            PersonaDeTurno = personaDeTurno;
+            FechaRegistro = fechaRegistro;
+        }
+
+        public override string ToString()
+        {
+            return $"{FechaRegistro}: {Temperatura}°C registrado por {PersonaDeTurno.Nombre} ({PersonaDeTurno.Turno})";
+        }
+    }
+
+    public class EstacionMeteorologica
+    {
+        private RegistroTemperatura[,] registros;
+
+        public EstacionMeteorologica()
+        {
+            registros = new RegistroTemperatura[5, 7];
+            CargarTemperaturasAutomatica();
+        }
+
+        public void RegistrarTemperatura(RegistroTemperatura registro, int semana, int dia)
+        {
+            if (semana < 5 && dia < 7)
+            {
+                registros[semana, dia] = registro;
+            }
+        }
+
+        public IEnumerable<RegistroTemperatura> VerTemperaturas()
+        {
+            foreach (var registro in registros)
+            {
+                if (registro != null)
+                {
+                    yield return registro;
+                }
+            }
+        }
+
+        private void CargarTemperaturasAutomatica()
+        {
+            Random rand = new Random();
+            DateTime fechaInicio = new DateTime(2024, 8, 1);
+
+            Persona[] personas = new Persona[]
+            {
+                new Pasante("Juan", "Mañana", 123),
+                new Profesional("Laura", "Tarde", "MAT-001"),
+                new Pasante("Pedro", "Noche", 124),
+                new Profesional("Ana", "Mañana", "MAT-002"),
+                new Pasante("Carlos", "Tarde", 125),
+                new Profesional("María", "Noche", "MAT-003"),
+            };
+
+            int personaIndex = 0;
+            for (int semana = 0; semana < 5; semana++)
+            {
+                for (int dia = 0; dia < 7; dia++)
+                {
+                    if (semana * 7 + dia < 31)
+                    {
+                        double temperatura = rand.Next(-5, 35);
+                        DateTime fecha = fechaInicio.AddDays(semana * 7 + dia);
+                        RegistrarTemperatura(new RegistroTemperatura(temperatura, personas[personaIndex], fecha), semana, dia);
+                        personaIndex = (personaIndex + 1) % personas.Length;
+                    }
+                }
+            }
+        }
+
+        public RegistroTemperatura VerTemperaturaDia(int dia)
+        {
+            int semana = (dia - 1) / 7;
+            int diaSemana = (dia - 1) % 7;
+
+            return registros[semana, diaSemana];
+        }
+
+        public double[] CalcularPromediosSemanales()
+        {
+            double[] promedios = new double[5];
+            for (int semana = 0; semana < 5; semana++)
+            {
+                double suma = 0;
+                int diasContados = 0;
+                for (int dia = 0; dia < 7; dia++)
+                {
+                    if (registros[semana, dia] != null)
+                    {
+                        suma += registros[semana, dia].Temperatura;
+                        diasContados++;
+                    }
+                }
+                promedios[semana] = suma / diasContados;
+            }
+            return promedios;
+        }
+
+        public double[] VerTemperaturasAltas(double umbral)
+        {
+            List<double> temperaturasAltas = new List<double>();
+            foreach (var registro in VerTemperaturas())
+            {
+                if (registro.Temperatura > umbral)
+                {
+                    temperaturasAltas.Add(registro.Temperatura);
+                }
+            }
+            return temperaturasAltas.ToArray();
+        }
+    }
+
+    public static class CalculoTemperaturas
+    {
+        public static double CalcularTemperaturaPromedio(IEnumerable<RegistroTemperatura> registros)
+        {
+            double suma = 0;
+            int contador = 0;
+            foreach (var registro in registros)
+            {
+                suma += registro.Temperatura;
+                contador++;
+            }
+            return suma / contador;
+        }
+
+        public static double CalcularTemperaturaMaxima(IEnumerable<RegistroTemperatura> registros)
+        {
+            double max = double.MinValue;
+            foreach (var registro in registros)
+            {
+                if (registro.Temperatura > max)
+                {
+                    max = registro.Temperatura;
+                }
+            }
+            return max;
+        }
+
+        public static double CalcularTemperaturaMinima(IEnumerable<RegistroTemperatura> registros)
+        {
+            double min = double.MaxValue;
+            foreach (var registro in registros)
+            {
+                if (registro.Temperatura < min)
+                {
+                    min = registro.Temperatura;
+                }
+            }
+            return min;
+        }
+    }
+}
